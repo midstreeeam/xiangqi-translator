@@ -1,0 +1,17 @@
+# Xiangqi Translator Dependencies
+# This project uses only Python standard library modules
+
+# Core Python packages (already included in Python 3.7+)
+# - enum (for piece types and colors)
+# - dataclasses (for structured data)
+# - typing (for type hints)
+# - re (for regex pattern matching)
+
+# Development dependencies (optional)
+# pytest>=6.0.0  # For testing
+# black>=21.0.0   # For code formatting
+# mypy>=0.900     # For type checking
+# flake8>=3.8.0   # For linting
+
+# Note: This project is designed to work with Python 3.7+ 
+# and requires no external dependencies for core functionality 

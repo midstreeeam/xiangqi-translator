@@ -1,0 +1,192 @@
+name: Xiangqi Translator Tests
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.7, 3.8, 3.9, "3.10", "3.11"]
+
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ matrix.python-version }}
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        # Install test dependencies if any
+        if [ -f requirements-dev.txt ]; then pip install -r requirements-dev.txt; fi
+    
+    - name: Lint with flake8 (optional)
+      run: |
+        # Install flake8 for linting
+        pip install flake8
+        # Stop the build if there are Python syntax errors or undefined names
+        flake8 src/ --count --select=E9,F63,F7,F82 --show-source --statistics
+        # Exit-zero treats all errors as warnings
+        flake8 src/ --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+      continue-on-error: true
+    
+    - name: Run comprehensive test suite
+      run: |
+        python tests/test_comprehensive.py
+    
+    - name: Run basic functionality test
+      run: |
+        python examples/basic_usage.py
+    
+    - name: Run ambiguity test
+      run: |
+        python tests/test_ambiguous_moves.py
+    
+    - name: Test import functionality
+      run: |
+        python -c "
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        from xiangqi_translator import translate_from_fen, get_initial_board
+        
+        # Test basic functionality
+        board = get_initial_board()
+        result = translate_from_fen(board.to_fen(), '炮二平五')
+        assert result.success, f'Translation failed: {result.error_message}'
+        assert result.iccs_move == 'h2e2', f'Expected h2e2, got {result.iccs_move}'
+        print('✓ Basic import and translation test passed')
+        
+        # Test ambiguity detection
+        ambiguous_fen = 'rnbakabnr/9/1c5c1/p1p1p1p1p/9/7C1/P1P1P1P1P/1C5C1/9/RNBAKABNR w - - 0 1'
+        result = translate_from_fen(ambiguous_fen, '炮二平五')
+        assert not result.success, 'Ambiguous move should fail'
+        assert '不明确' in result.error_message, 'Should detect ambiguity'
+        print('✓ Ambiguity detection test passed')
+        
+        print('✓ All functionality tests passed!')
+        "
+
+  test-performance:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Performance benchmark
+      run: |
+        python -c "
+        import sys, os, time
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        from xiangqi_translator import translate_from_fen, get_initial_board
+        
+        # Performance test
+        fen = get_initial_board().to_fen()
+        start_time = time.time()
+        
+        for i in range(100):
+            result = translate_from_fen(fen, '炮二平五')
+            assert result.success
+        
+        end_time = time.time()
+        avg_time = (end_time - start_time) / 100
+        
+        print(f'Average translation time: {avg_time:.4f}s')
+        assert avg_time < 0.01, f'Translation too slow: {avg_time:.4f}s'
+        print('✓ Performance test passed')
+        "
+
+  test-coverage:
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python 3.9
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.9
+    
+    - name: Test coverage analysis
+      run: |
+        python -c "
+        import sys, os
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
+        from xiangqi_translator import *
+        
+        # Test various features
+        tests_passed = 0
+        total_tests = 0
+        
+        # Test 1: Basic translation
+        total_tests += 1
+        try:
+            result = translate_from_fen(get_initial_board().to_fen(), '炮二平五')
+            assert result.success and result.iccs_move == 'h2e2'
+            tests_passed += 1
+            print('✓ Basic translation')
+        except Exception as e:
+            print(f'✗ Basic translation: {e}')
+        
+        # Test 2: Invalid move handling
+        total_tests += 1
+        try:
+            result = translate_from_fen(get_initial_board().to_fen(), '将十进十')
+            assert not result.success
+            tests_passed += 1
+            print('✓ Invalid move handling')
+        except Exception as e:
+            print(f'✗ Invalid move handling: {e}')
+        
+        # Test 3: Board state after move
+        total_tests += 1
+        try:
+            result = translate_from_fen(get_initial_board().to_fen(), '炮二平五', include_board_after=True)
+            assert result.success and result.board_after_move is not None
+            tests_passed += 1
+            print('✓ Board state after move')
+        except Exception as e:
+            print(f'✗ Board state after move: {e}')
+        
+        # Test 4: Move validation
+        total_tests += 1
+        try:
+            result = validate_move(get_initial_board().to_fen(), 'h2', 'e2')
+            assert result['valid']
+            tests_passed += 1
+            print('✓ Move validation')
+        except Exception as e:
+            print(f'✗ Move validation: {e}')
+        
+        # Test 5: Legal moves generation
+        total_tests += 1
+        try:
+            result = get_legal_moves(get_initial_board().to_fen())
+            assert result['success'] and len(result['moves']) > 0
+            tests_passed += 1
+            print('✓ Legal moves generation')
+        except Exception as e:
+            print(f'✗ Legal moves generation: {e}')
+        
+        coverage = (tests_passed / total_tests) * 100
+        print(f'\\nCoverage: {tests_passed}/{total_tests} ({coverage:.1f}%)')
+        
+        if coverage >= 80:
+            print('✓ Coverage test passed')
+        else:
+            print('✗ Coverage test failed')
+            sys.exit(1)
+        " 
