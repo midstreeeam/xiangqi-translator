@@ -1,0 +1,22 @@
+# Development dependencies for xiangqi-translator
+# Install with: pip install -r requirements-dev.txt
+
+# Testing
+pytest>=6.0.0
+pytest-cov>=2.0.0
+
+# Code formatting and linting
+black>=21.0.0
+flake8>=3.8.0
+isort>=5.0.0
+
+# Type checking
+mypy>=0.900
+
+# Documentation
+sphinx>=4.0.0
+sphinx-rtd-theme>=1.0.0
+
+# Build tools
+build>=0.7.0
+twine>=3.0.0

@@ -46,7 +46,7 @@ def main():
     
     if success:
         print("\nFor comprehensive testing, run:")
-        print("  python tests/run_all_tests.py")
+        print("  python -m pytest tests/")
         print("\nFor usage examples, run:")
         print("  python examples/basic_usage.py")
     
